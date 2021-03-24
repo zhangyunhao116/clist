@@ -13,8 +13,8 @@ type IntList struct {
 
 type intNode struct {
 	value  int
+	marked uint32
 	next   *intNode
-	marked bool
 	mu     sync.Mutex
 }
 
@@ -28,6 +28,14 @@ func (n *intNode) loadNext() *intNode {
 
 func (n *intNode) storeNext(node *intNode) {
 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&n.next)), unsafe.Pointer(node))
+}
+
+func (n *intNode) setMarked() {
+	atomic.StoreUint32(&n.marked, 1)
+}
+
+func (n *intNode) isMarked() bool {
+	return atomic.LoadUint32(&n.marked) == 1
 }
 
 func NewInt() *IntList {
@@ -78,12 +86,13 @@ func (l *IntList) Delete(value int) bool {
 		}
 
 		// Check if b is not exists
-		if b == nil {
+		if b == nil || b.value != value {
 			return false
 		}
+
 		// Step 2. Lock b
 		b.mu.Lock()
-		if b.value != value || b.marked {
+		if b.isMarked() {
 			// Step 3. Check if b has been deleted or another goroutine has delete it
 			b.mu.Unlock()
 			return false
@@ -91,14 +100,14 @@ func (l *IntList) Delete(value int) bool {
 
 		// Step 4. Lock a
 		a.mu.Lock()
-		if a.next != b || a.marked {
+		if a.next != b || a.isMarked() {
 			// Step 5. check a.next == b and a is not marked
 			a.mu.Unlock()
 			b.mu.Unlock()
 			continue
 		}
 		// Step 6. mark this node and delete it
-		b.marked = true
+		b.setMarked()
 		a.storeNext(b.next)
 		atomic.AddInt64(&l.length, -1)
 		// Step 7. unlock a and b
@@ -116,13 +125,13 @@ func (l *IntList) Contains(value int) bool {
 	if x == nil {
 		return false
 	}
-	return x.value == value && !x.marked
+	return x.value == value && !x.isMarked()
 }
 
 func (l *IntList) Range(f func(value int) bool) {
 	x := l.head.loadNext()
 	for x != nil {
-		if x.marked {
+		if x.isMarked() {
 			x = x.loadNext()
 			continue
 		}
