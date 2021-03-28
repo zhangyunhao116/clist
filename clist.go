@@ -57,18 +57,28 @@ func (l *IntList) Insert(value int) bool {
 		}
 		// Step 2. Lock a
 		a.mu.Lock()
-		if a.next != b {
-			// Step 3. check a.next == b
+		if a.next != b { // check a.next == b
+			// Version 1.
 			a.mu.Unlock()
 			continue
+			// Version 2.
+			// if a.next == nil || a.next.value < value {
+			// 	a.mu.Unlock()
+			// 	continue
+			// }
+			// if a.next.value == value {
+			// 	a.mu.Unlock()
+			// 	return false
+			// } else if a.next.value > value {
+			// 	b = a.next
+			// }
 		}
-		// Step 4. Create new node x
+		// Step 3. Create new node x
 		x := newIntNode(value)
-		// Step 5. x.next = b
+		// Step 4. x.next = b; a.next = x
 		x.next = b
-		// Step 6. a.next = x
 		a.storeNext(x)
-		// Step 7. Unlock a
+		// Step 5. Unlock a
 		a.mu.Unlock()
 		atomic.AddInt64(&l.length, 1)
 		return true
@@ -85,7 +95,7 @@ func (l *IntList) Delete(value int) bool {
 			b = b.loadNext()
 		}
 
-		// Check if b is not exists
+		// Check if b is not exist.
 		if b == nil || b.value != value {
 			return false
 		}
@@ -93,24 +103,24 @@ func (l *IntList) Delete(value int) bool {
 		// Step 2. Lock b
 		b.mu.Lock()
 		if b.isMarked() {
-			// Step 3. Check if b has been deleted or another goroutine has delete it
+			// Check if b has been deleted or another goroutine has delete it.
 			b.mu.Unlock()
 			return false
 		}
 
-		// Step 4. Lock a
+		// Step 3. Lock a
 		a.mu.Lock()
 		if a.next != b || a.isMarked() {
-			// Step 5. check a.next == b and a is not marked
+			// Check a.next == b and a is not marked
 			a.mu.Unlock()
 			b.mu.Unlock()
 			continue
 		}
-		// Step 6. mark this node and delete it
+		// Step 4. Mark this node and delete it
 		b.setMarked()
 		a.storeNext(b.next)
 		atomic.AddInt64(&l.length, -1)
-		// Step 7. unlock a and b
+		// Step 5. Unlock a and b
 		a.mu.Unlock()
 		b.mu.Unlock()
 		return true
