@@ -53,6 +53,10 @@ func (l *IntList) Insert(value int) bool {
 		}
 		// Check if the node is exists.
 		if b != nil && b.value == value {
+			if b.isMarked() {
+				// The node has been marked, insert it in next loop.
+				continue
+			}
 			return false
 		}
 		// Step 2. Lock a
