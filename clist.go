@@ -157,5 +157,5 @@ func (l *IntList) Range(f func(value int) bool) {
 }
 
 func (l *IntList) Len() int {
-	return int(l.length)
+	return int(atomic.LoadInt64(&l.length))
 }
