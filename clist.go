@@ -61,12 +61,12 @@ func (l *IntList) Insert(value int) bool {
 		}
 		// Step 2. Lock a
 		a.mu.Lock()
-		if a.next != b || a.isMarked() { // check a.next == b
+		if a.next != b || a.isMarked() { // check a.next == b AND !a.isMarked()
 			// Version 1.
 			a.mu.Unlock()
 			continue
 			// Version 2.
-			// if a.next == nil || a.next.value < value {
+			// if a.next == nil || a.next.value < value || a.isMarked() {
 			// 	a.mu.Unlock()
 			// 	continue
 			// }
